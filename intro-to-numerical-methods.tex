@@ -1,0 +1,574 @@
+\documentclass{article}        
+\usepackage{amsmath}
+
+% Japanese support
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}  
+\usepackage{CJKutf8}
+
+% Indent first paragraph at new section
+\usepackage{indentfirst}
+
+\newcommand{\ud}{\,\mathrm{d}} 
+\newcommand{\dt}{\Delta t} 
+%\newcommand{\dt}{h} 
+\newcommand{\bigO}{\mathcal{O}}
+\newcommand{\un}{u_n}
+\newcommand{\uni}{u_{n+1}}
+%\newcommand{\unhalf}{u_{n+\tfrac{1}{2}}}
+\newcommand{\unhalf}{u_{n+1/2}}
+
+% blackboard font 1
+\usepackage{bbm} 
+% Blackboard "I" for identity matrix
+\newcommand{\Id}{\mathbbm{1}}
+
+\title{Intro to numerical methods for ordinary differential equations}
+\author{Marc Kjerland}
+\date{\today}
+
+\setlength{\parskip}{1ex} % Space between paragraphs
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This handout will be a reference for simple numerical methods for ordinary differential equations (ODEs).
+
+We are interested solving an \emph{initial value problem} for a differentiable function of one variable, $u(t)$.
+The values of $u$ are unknown except at a single time, $t=t_0$, but we know
+the rate of change of $u$ via the differential equation
+
+\begin{equation}
+    %\frac{\ud u}{\ud t} = f(u),
+    u'(t) = f(u(t)),
+    \label{ode}
+\end{equation}
+
+where $ u'(t) = \frac{\ud u}{\ud t}$ and where $f$ is a well-behaved function which is given, possibly based on physical laws, and which depends on the current physical state $u$.
+%Note that $f$ does not depend on $t$; it only depends on $u$.
+
+The initial value problem is given as
+
+\begin{equation}
+    \left\{\begin{split}
+            &u'(t) = f(u(t)), \\
+            &u(t_0) = u_0.
+    \end{split}\right .
+    \label{ivp}
+\end{equation}
+
+In general $f$ can also be a function of $t$, for example if there is some external
+time-dependent forcing like a solar cycle. For comparison:
+
+\begin{equation}
+    %\frac{\ud u}{\ud t} = f(t,u)
+    u'(t) = f(t,u(t))
+    \label{odet}
+\end{equation}
+
+Equation \eqref{odet} is said to be \emph{non-autonomous} and \eqref{ode} is \emph{autonomous}.
+For simplicity we'll only consider the autonomous case, where $f$ is independent of $t$,
+but the following methods can all be readily
+extended to the non-autonomous case.
+
+Note that there is a close connection between the methods
+in this paper
+and the quadrature methods for finding the area under a curve:
+the rectangle method, the trapezoid rule, Simpson's rule, etc.
+
+\subsection{Systems of equations}
+
+All of the methods listed here can be applied to
+systems of differential equations:
+
+\begin{equation}
+    \left\{\begin{split}
+        &u_1' = f_1(u_1,u_2,\ldots,u_n), \\
+        &u_2' = f_2(u_1,u_2,\ldots,u_n), \\
+        &\ldots \\
+        &u_n' = f_n(u_1,u_2,\ldots,u_n).
+    \end{split} \right .
+\end{equation}
+
+This can be written concisely as 
+\begin{equation}
+    \vec{u}' = \vec{f}(\vec{u}).
+\end{equation}
+
+For simplicity in notation, we can leave off the $\vec{}\ $ and just write $u$ and $f$.
+
+
+\section{Euler's method}
+
+We can solve the initial value problem \eqref{ivp} on a discretized time domain by replacing the derivative $u'(t)$ with a finite difference:
+
+\begin{equation}
+    %\frac{u(t+\dt) - u(t)}{\dt} \approx u'(t) := f(u(t)).
+    \frac{u(t+\dt) - u(t)}{\dt} \approx  f(u(t)).
+\end{equation}
+
+Moving some terms around we have
+
+\begin{equation}
+    u(t+\dt) \approx u(t) + \dt f(u(t))
+    \label{utfeuler}
+    %\boxed{u(t+\dt) \approx u(t) + \dt f(u(t))}
+    %\label{feuler}
+    %\tag{Forward Euler}
+\end{equation}
+
+Using this, we can find an approximate solution for $u$ recursively,
+starting with $u(t_0)$ to compute $u(t_0 + \dt)$,
+then using this to compute $u(t_0 + 2\dt)$, and so on.
+
+We'll use the following simplifying notation:
+%Assuming the timestep size $\dt$ is uniform, define
+$t_n = t_0 + n\dt$ 
+and $u_n = u(t_n)$.
+Frequently in this handout we'll assume that we know the value of $u_n$ at the current time $t=t_n$,
+ and we want to solve for $\uni$ at the next time $t_{n+1}$.
+%\begin{equation}
+    %\begin{split}
+        %t_1 = t_0 + \dt \\
+        %t_2 = t_1 + \dt = t_0 + 2\dt \\
+        %\ldots \\
+        %t_n = t_{n-1} + \dt = t_0 + n\dt \\
+        %%t_{n+1} = t_n + \dt = t_0 + (n+1)\dt.
+    %\end{split}
+%\end{equation}
+
+%and 
+%\begin{equation}
+    %\begin{split}
+        %u_0 = u(t_0) \\
+        %u_1 = u(t_1) \\
+        %\ldots \\
+        %u_n = u(t_n).
+        %%\uni = u(t_{n+1}).
+    %\end{split}
+%\end{equation}
+
+Using this notation we can rewrite \eqref{utfeuler} as:
+\begin{equation}
+    \boxed{\uni = u_n + \dt f(u_n)}
+    \label{feuler}
+    \tag{Forward Euler}
+\end{equation}
+
+This is known as Euler's method, or more specifically the Forward Euler method, 
+named after the 18th Century Swiss mathematician Leonhard Euler.
+This is the simplest \emph{explicit} method, where the value at the next time step, $u(t+\dt)$, 
+is given explicitly as a function of known values at previous times.
+%Later we'll look at an \emph{implicit} method.
+
+\section{Accuracy}
+
+Surely replacing the derivative term with a finite difference will introduce some error into our solution,
+and intuitively we expect the error to depend on the size of $\dt$ which is no longer infinitesimal.
+Study of the error term is known as the \emph{accuracy} of the method.
+
+How accurate is the Forward Euler method? Let's expand $u(t+\dt)$ in a Taylor series
+(See Appendix \ref{a:bigO} and \ref{a:taylor}):
+
+\begin{align*}
+    u(t+\dt) &= u(t) + \dt \, u'(t) + \frac{\dt^2}{2} u''(t) + \ldots \\
+    {} &= u(t) + \dt \, u'(t) + \bigO(\dt^2).
+\end{align*}
+
+Remember that $u'(t) = f(u(t))$, so 
+
+\begin{equation}
+    u(t+\dt) - u(t) = \dt f(u(t)) + \bigO(\dt^2).
+\end{equation}
+
+The \emph{local truncation error} at each integration step is proportional to $\dt^2$.
+Over multiple integration steps these errors will accumulate to a \emph{global truncation error};
+since the total number of integration steps is proportional to $\dt^{-1}$,
+the global truncation error is proportional to $\dt^2 \cdot \dt^{-1} = \dt$.
+So if you want to reduce the errors in your solution by a factor of 2,
+you must reduce the step size by a factor of 2, which means you will perform twice as many
+calculations.
+
+Are there more accurate methods? Perhaps with a global truncation error of $\bigO(\dt^2)$ or better?
+There are, as we'll see in the next section. A method with error $\bigO(\dt^n)$ 
+is said to be \emph{order-n} accurate or \emph{nth-order} accurate.
+The Forward Euler method is \emph{order-1} accurate.
+
+\section{Higher order methods}
+
+There is a family of numerical methods which use multiple
+values of $u'$ between $t$ and $t+\dt$ to get a more accurate estimate for $u(t+\dt)$.
+These methods (just like higher-order quadrature methods) require only that the higher derivates 
+of $f$ are bounded.
+
+The first example is the \emph{midpoint method}, a 2nd-order method.
+
+\subsection{Midpoint method}
+
+The basic idea of the midpoint method is that the finite difference should be more accurate
+if it is centered around the derivative:
+
+\begin{equation}
+    %\frac{u(t+\dt) - u(t)}{\dt} \approx u'(t+\tfrac{\dt}{2}).
+    \frac{u(t+\dt) - u(t)}{\dt} \approx u'(t+\frac{\dt}{2}).
+\end{equation}
+
+This can be verified by replacing $u(t+\dt)$ and $u(t)$ with Taylor expansions of $u$ around $t+\frac{\dt}{2}$:
+
+\begin{align*}
+    u(t+\dt) &= u(t+\frac{\dt}{2}) + \frac{\dt}{2} u'(t+\frac{\dt}{2}) + \frac{\dt^2}{8} u''(t+\frac{\dt}{2}) + 
+    \bigO(\dt^3) \\
+    %\frac{\dt^3}{48} u'''(t+\frac{\dt}{2}) + \ldots \\ %\bigO(\dt^4) \\
+    u(t) &= u(t+\frac{\dt}{2}) - \frac{\dt}{2} u'(t+\frac{\dt}{2}) + \frac{\dt^2}{8} u''(t+\frac{\dt}{2}) + 
+    \bigO(\dt^3) \\
+    %\frac{\dt^3}{48} u'''(t+\frac{\dt}{2}) + \ldots \\ %\bigO(\dt^4) \\
+    \implies u(t+\dt) - u(t) &= \dt\, u'(t+\frac{\dt}{2}) + \bigO(\dt^3).
+\end{align*}
+
+So, if we apply this to our differential equation \eqref{ode}, we have
+
+\begin{equation}
+    %u(t+\dt) - u(t) = \dt f(u(t+\frac{\dt}{2})) + \bigO(\dt^3).
+    \uni = u_n + \dt\, f(\unhalf) + \bigO(\dt^3).
+    \label{mid-error}
+\end{equation}
+
+%Unfortunately we don't know the value of $u(t+\frac{\dt}{2})$. 
+Unfortunately we don't know the value of $\unhalf$. 
+However, we know how to approximate it with a Taylor expansion:
+
+\begin{equation}
+    \begin{split}
+        u(t+\frac{\dt}{2}) &= u(t) + \frac{\dt}{2} u'(t) + \bigO(\dt^2) \\
+        %{} &= u(t) + \frac{\dt}{2} f(u(t)) + \bigO(\dt^2).
+        \implies \unhalf &= u_n + \frac{\dt}{2} f(u_n) + \bigO(\dt^2).
+    \end{split}
+    \label{mid-insides}
+\end{equation}
+
+Putting this all together we have:
+\begin{equation}
+    %\boxed{u(t+\dt) = u(t) + \dt f\left(u(t) + \frac{\dt}{2} f(u(t))\right)}
+    \boxed{\uni = u_n + \dt\, f\left(u_n + \tfrac{\dt}{2} f(u_n)\right)}
+    \tag{Midpoint method}
+\end{equation}
+
+From \eqref{mid-error} we see that the midpoint method has local error of order $\dt^3$,
+and as long as $f$ is differentiable the remainder term in \eqref{mid-insides} won't
+result in larger errors. Thus the midpoint method has a \emph{global} error of $\dt^2$,
+so we say it is a 2nd-order method.
+
+This accuracy comes at a cost: for each integration step that the Forward Euler method would take,
+the midpoint method requires two integration steps:
+%first to get $u(t + \frac{\dt}{2})$ then to get $u(t + \dt)$.
+first to find $\unhalf$ then to find $\uni$.
+However, this is a small price to pay for the increased order of accuracy.
+
+\subsection{Runge-Kutta methods}
+
+Following the example of the midpoint method, we can add more and more intermediate terms
+to our calculations to increase the order of accuracy. Two German mathematicians, C. Runge and M.W. Kutta,
+explored these methods around the year 1900 and now they are known as the Runge-Kutta methods.
+The midpoint method is a simple case of a Runge-Kutta method and is sometimes referred to as RK2.
+
+One of the most popular Runge-Kutta methods is 4th-order and requires 
+four calculations at each integration step. It is often referred to as RK4:
+
+\begin{equation}
+    \boxed{\begin{split}
+        &\uni = u_n + \frac{\dt}{6} (k_1 + k_2 + k_3 + k_4) \\
+        &k_1 = f(u_n) \\ 
+        &k_2 = f(u_n + \frac{\dt}{2} k_1) \\ 
+        &k_3 = f(u_n + \frac{\dt}{2} k_2) \\ 
+        &k_4 = f(u_n + \dt k_3).
+        %&u(t+\dt) = u(t) + \frac{\dt}{6} (k_1 + k_2 + k_3 + k_4) \\
+        %&k_1 = f(u(t)) \\ 
+        %&k_2 = f(u(t) + \frac{\dt}{2} k_1) \\ 
+        %&k_3 = f(u(t) + \frac{\dt}{2} k_2) \\ 
+        %&k_4 = f(u(t) + \dt k_3).
+    \end{split}}
+    \label{rk4}
+    \tag{RK4}
+\end{equation}
+
+%There are also some \emph{time-adaptive} Runge-Kutta methods which allow for clever prediction
+%of the error
+
+Matlab's standard ODE solver \texttt{ode45} is a 4th order Runge-Kutta solver
+(but it isn't RK4: it also uses an adaptive timestep feature).
+
+\section{Stability}
+
+Sometimes a differential equation is especially challenging to solve numerically,
+and if your timestep isn't small enough your solution will be very wrong.
+This problem is known as \emph{stability}, and particularly troublesome
+equations are sometimes called "stiff."
+
+Here is a very simple example which turns out to be a stiff problem.
+Consider a linear drag law, or Stokes' law,
+where the frictional force $F_d$ on an object or a fluid parcel is proportional to the velocity $u$:
+
+\begin{equation}
+    F_d = -\alpha u,
+    \label{stokes}
+\end{equation}
+
+for some $\alpha > 0$.
+For an object with unit mass, by Newton's second law the acceleration $\tfrac{\ud u}{\ud t}$ is 
+given by:
+
+\begin{equation}
+    \frac{\ud u}{\ud t} = -\alpha u.
+\end{equation}
+
+This is very simple to solve analytically [what is the solution?]
+but let's apply the Forward Euler method:
+
+\begin{equation}
+    \begin{aligned}
+        \frac{\uni - u_n}{\dt} &= -\alpha u_n \\
+        \implies \uni &= u_n - \dt\,\alpha u_n \\
+                 {} &= (1 - \dt\,\alpha) u_n.
+    \end{aligned}
+    \label{dragexp}
+\end{equation}
+
+If the timestep $\dt$ is small enough, we'll get the result we expect.
+But what happens if the drag coefficient $\alpha$ is large, or $\dt$ is large,
+so that $\dt \geq \alpha^{-1}$?
+
+[Try an example! $u_n = 5, \alpha = 10, \dt = 0.5$]
+
+When $\dt > \alpha^{-1}$ the method becomes \emph{unstable} and the solutions
+will be unphysical.
+
+The stability of a numerical method depends strongly on the differential equation itself,
+and this issue is especially important for numerical solution of partial differential equations (PDEs).
+
+\subsection{CFL condition}
+
+In fluid dynamics there is an important stability criteria known as the \emph{CFL condition}
+(Courant, Friedrichs, Lewy), sometimes called the Courant condition.
+It specifies an upper limit for the timestep size $\Delta t$
+based on the spatial grid size $\Delta x$ and the speed $C$ of the fastest 
+characteristic wave:
+
+\begin{equation}
+    \Delta t \leq \frac{\Delta x}{C}
+    \tag{CFL}
+\end{equation}
+
+In an explicit numerical scheme, this condition must be satisfied or 
+the solution will be unphysical.
+
+For example: long water waves propagate with speed $u \pm \sqrt{gh}$, where
+$u$ is the water current speed and $h$ is the height of the water column. So we would take
+$C = \max_x (|u| + \sqrt{gh})$ to find a constraint for the timestep.
+This means we may have to take smaller time steps if there
+are areas of fast flow, high waves, or deeper bathymetry.
+
+Another example is the speed of sound in a compressible gas, which is much higher
+than the speed of gravity waves; this is one reason
+why the compressible Euler equations are not used in meteorology.
+
+The CFL condition creates a costly problem - if you want fine spatial resolution you will reduce $\Delta x$,
+but by the CFL conditon you must also reduce $\Delta t$. [See: Curse of Dimensionality]
+
+\section{Implicit methods}
+
+Stability constraints can sometimes be severe, requiring $\dt$ to be so small that
+your numerical solution is very costly to compute. One way to avoid this is to use an
+\emph{implicit} method. 
+
+Going back to our original ODE \eqref{ode}, recall we replaced the derivative on the left hand side
+with a difference equation from $u_n$ to $\uni$ and we used $u_n$ on the right hand side, like so:
+
+\begin{equation}
+    \frac{\uni - u_n }{ \dt } = f(u_n).
+\end{equation}
+
+What if we instead used $\uni$ in the right hand side?
+
+\begin{equation}
+    \frac{\uni - u_n }{ \dt } = f(\uni).
+\end{equation}
+
+Rearranging the terms we have
+
+\begin{equation}
+    \boxed{\uni + \dt\, f(\uni) = u_n}
+    \label{beuler}
+    \tag{Backward Euler}
+\end{equation}
+
+Now we would have to solve an algebraic equation for $\uni$, and often this is done
+using an iterative solution method such as Newton's method.
+
+For a linear system the Backward Euler method is much simpler:
+\begin{equation}
+    u' = A u
+    \label{linode}
+\end{equation}
+
+where $A$ is a scalar or matrix. Then we have
+
+\begin{equation}
+    \begin{split}
+        &\frac{\uni - u_n}{\dt} = A \uni \\
+        \implies &\uni - \dt A \uni = u_n \\
+        \implies &\left(\Id - \dt A \right) \uni = u_n \\
+        \implies  &\uni = \left(\Id - \dt A \right)^{-1}  u_n, \\
+    \end{split}
+\end{equation}
+
+where $\Id$ is an identity matrix (or $1$ in the scalar case).
+
+
+Thus to solve the linear equation \eqref{linode} the Backwards Euler method is given by
+
+\begin{equation}
+    \boxed{\uni = (\Id - \dt A)^{-1} u_n}
+    \label{linbeuler}
+    \tag{Backward Euler, linear}
+\end{equation}
+
+The Backward Euler method is the simplest implicit method, and it has the same accuracy
+as the Forward Euler method (order 1). Higher order implicit methods exist,
+as well as hybrid implicit-explicit methods.
+
+Implicit methods always require some extra calculation steps
+such as iteration or matrix inversion*
+which in practice can be costly. 
+However, they are invaluable for certain problems
+(as we'll see in the next example).
+
+[*Here is an excellent essay why you should never actually invert a matrix:
+http://www.johndcook.com/blog/2010/01/19/dont-invert-that-matrix/]
+
+Note 1: The Backward Euler method
+will fail if $(\Id - \dt A)$ is not invertible, but in practice this
+is usually not a problem (see what happens in the next example).
+
+Note 2: In the nonlinear case, an approximation can be made to $f$ at each time step
+such as replacing it locally with with a tangent line. Then linear algebra can be used
+to get a solution.
+
+
+\subsection{Application to stiff problem}
+
+Implicit methods are best suited for stiff problems.
+Let's return to the scalar ODE for linear drag law (Stokes law):
+
+\begin{equation}
+    \frac{\ud u}{\ud t} = -\alpha u
+\end{equation}
+
+and now let's apply the Backward Euler method:
+
+\begin{equation}
+    \begin{split}
+        &\frac{\uni - u_n}{\dt} = -\alpha \uni \\
+        \implies &\uni = u_n - \dt\,\alpha \uni \\
+        \implies &\uni + \dt\,\alpha \uni = u_n \\
+        \implies &(1 + \dt\,\alpha )\uni = u_n \\
+        \implies &\uni = \frac{u_n}{1 + \dt\,\alpha }.
+    \end{split}
+\end{equation}
+
+Compare this with the explicit case \eqref{dragexp}.
+In this implicit case, the term $(1 + \dt\,\alpha)$ is always positive
+so $\uni$ will always be the same sign as $u_n$, and this will drive
+the solution towards zero as expected. In fact, $\dt$ could be quite
+large and it will still give a qualitatively correct result
+(although the accuracy will suffer).
+
+So, implicit methods help ignore stability constraints
+and thus allow for larger $\dt$, resulting in fewer timesteps 
+in total. The trade-off is that each timestep will be more costly,
+especially with high-dimensional systems,
+and the cost also usually increases with the size of $\dt$.
+
+%\section{Which method to use?}
+
+
+%\section{PDEs - Finite Difference Method}
+
+%\subsection{Action Balance Equations}
+
+%\section{PDEs - Finite Volume Method}
+
+%\subsection{Shallow Water Equations}
+
+%\section{PDEs - Finite Element Method}
+
+\appendix
+
+\section{"Big Oh" notation}
+\label{a:bigO}
+
+The "Big Oh" notation is often used in
+applied math and computer science
+when discussing roughly how large (or small) a function is depending on some variable.
+You can think of it like an Order of Magnitude.
+In this handout we are specifically interested how a small parameter like $\dt$
+affects the error or remainder term in our approximations.
+
+We say $g(h)=\bigO(h)$ if there is a finite constant $C$ such that
+$\frac{g(h)}{h} \rightarrow C \neq 0$ 
+as $h \rightarrow 0$.
+So roughly $g(h) \approx C h$ for small values of $h$.
+
+Example. Let $g(h) = -6h^2 + 25 h^3 + 100 h^4$.
+We are interested in values of $h$ which are small (close to 0). In that case, $|h^4| << |h^3| << |h^2|$.
+So for small $h$, $g(h) \approx -6h^2.$ Then we say $g(h) = \bigO(h^2)$.
+
+In this handout if you see an expression like $\bigO(\dt^3)$, that means there is some
+error/remainder term which might not be known exactly but which is roughly the size of $\dt^3$.
+
+In computer science, big-oh notation is usually used to describe
+how long an algorithm takes based on the problem size, represented by a large integer $n$,
+such as matrix multiplication or the famous \emph{P vs NP} question.
+
+Trivia (1): Multiplying two $n\times n$ matrices takes $\bigO(n^3)$ steps using the basic method,
+but the best algorithm takes $\bigO(n^{2.8})$ steps.
+For $1000\times 1000$ matrices, in theory that's nearly four times faster!
+
+Trivia (2): Computing the discrete Fourier transform of $n$ data points
+based on the definition takes $\bigO(n^2)$ steps,
+but the Fast Fourier Transform does it in $\bigO(n \log n)$ steps.
+For 1000 data points that's a speedup of 100x !!
+
+\section{Taylor series expansion}
+\label{a:taylor}
+Taylor's Theorem tells us that we can represent a function $g(x)$
+by its Taylor series expansion
+
+\begin{equation}
+    g(x+h) = g(x) + h g'(x) + \frac{h^2}{2} g''(x) + \frac{h^3}{6} g'''(x) + \ldots
+\end{equation}
+
+within a small distance $h$ from $x$.
+Furthermore, if $g$ is nice (its higher derivatives aren't too big) then we can truncate the Taylor series
+and get a good approximation:
+
+\begin{align*}
+    &g(x+h) \approx g(x) + h g'(x) &+ \bigO(h^2) \\
+    &g(x+h) \approx g(x) + h g'(x) + \frac{h^2}{2} g''(x) &+ \bigO(h^3) \\
+    &g(x+h) \approx g(x) + h g'(x) + \frac{h^2}{2} g''(x) + \frac{h^3}{6} g'''(x) &+ \bigO(h^4)
+\end{align*}
+
+and so on, where the size of the error is roughly a power of $h$ as $h\rightarrow 0$.
+
+\section{Pronounciation guide}
+
+Euler: \begin{CJK}{UTF8}{min}オイラー\end{CJK}
+
+Runge-Kutta: \begin{CJK}{UTF8}{min}ルンゲ　クッタ\end{CJK}
+
+\end{document}
+
+
+
